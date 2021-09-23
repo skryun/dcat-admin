@@ -66,10 +66,21 @@ class Permission extends Model implements Sortable
     }
 
     /**
+     * @return BelongsToMany
+     */
+    public function menus(): BelongsToMany
+    {
+        $pivotTable = config('admin.database.permission_menu_table');
+
+        $relatedModel = config('admin.database.menu_model');
+
+        return $this->belongsToMany($relatedModel, $pivotTable, 'permission_id', 'menu_id')->withTimestamps();
+    }
+
+    /**
      * If request should pass through the current permission.
      *
-     * @param Request $request
-     *
+     * @param  Request  $request
      * @return bool
      */
     public function shouldPassThrough(Request $request): bool
@@ -103,8 +114,7 @@ class Permission extends Model implements Sortable
     /**
      * Get options for Select field in form.
      *
-     * @param \Closure|null $closure
-     *
+     * @param  \Closure|null  $closure
      * @return array
      */
     public static function selectOptions(\Closure $closure = null)
@@ -115,8 +125,7 @@ class Permission extends Model implements Sortable
     }
 
     /**
-     * @param string $path
-     *
+     * @param  string  $path
      * @return mixed
      */
     public function getHttpPathAttribute($path)
@@ -139,9 +148,8 @@ class Permission extends Model implements Sortable
     /**
      * If a request match the specific HTTP method and path.
      *
-     * @param array   $match
-     * @param Request $request
-     *
+     * @param  array  $match
+     * @param  Request  $request
      * @return bool
      */
     protected function matchRequest(array $match, Request $request): bool
@@ -173,7 +181,6 @@ class Permission extends Model implements Sortable
 
     /**
      * @param $method
-     *
      * @return array
      */
     public function getHttpMethodAttribute($method)

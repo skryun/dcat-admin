@@ -28,8 +28,7 @@ class ListField extends Field
     /**
      * Set Max list size.
      *
-     * @param int $size
-     *
+     * @param  int  $size
      * @return $this
      */
     public function max(int $size)
@@ -42,8 +41,7 @@ class ListField extends Field
     /**
      * Set Minimum list size.
      *
-     * @param int $size
-     *
+     * @param  int  $size
      * @return $this
      */
     public function min(int $size)
@@ -60,7 +58,11 @@ class ListField extends Field
     {
         $this->data = $data;
 
-        return Helper::array($this->getValueFromData($data, null, $this->value));
+        $value = Helper::array($this->getValueFromData($data, null, $this->value));
+
+        unset($value['values'][static::DEFAULT_FLAG_NAME]);
+
+        return $value;
     }
 
     /**

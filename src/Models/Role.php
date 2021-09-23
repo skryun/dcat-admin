@@ -65,10 +65,21 @@ class Role extends Model
     }
 
     /**
+     * @return BelongsToMany
+     */
+    public function menus(): BelongsToMany
+    {
+        $pivotTable = config('admin.database.role_menu_table');
+
+        $relatedModel = config('admin.database.menu_model');
+
+        return $this->belongsToMany($relatedModel, $pivotTable, 'role_id', 'menu_id')->withTimestamps();
+    }
+
+    /**
      * Check user has permission.
      *
      * @param $permission
-     *
      * @return bool
      */
     public function can(?string $permission): bool
@@ -80,7 +91,6 @@ class Role extends Model
      * Check user has no permission.
      *
      * @param $permission
-     *
      * @return bool
      */
     public function cannot(?string $permission): bool
@@ -91,8 +101,7 @@ class Role extends Model
     /**
      * Get id of the permission by id.
      *
-     * @param array $roleIds
-     *
+     * @param  array  $roleIds
      * @return \Illuminate\Support\Collection
      */
     public static function getPermissionId(array $roleIds)
@@ -118,8 +127,7 @@ class Role extends Model
     }
 
     /**
-     * @param string $slug
-     *
+     * @param  string  $slug
      * @return bool
      */
     public static function isAdministrator(?string $slug)
