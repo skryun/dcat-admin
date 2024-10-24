@@ -11,13 +11,16 @@ use Illuminate\Support\Facades\Validator;
 
 class File extends Field implements UploadFieldInterface
 {
-    use WebUploader,
-        UploadField;
+    use WebUploader;
+    use UploadField;
 
     /**
      * @var array
      */
-    protected $options = ['events' => []];
+    protected $options = [
+        'events' => [],
+        'override' => false,
+    ];
 
     public function __construct($column, $arguments = [])
     {
@@ -61,18 +64,19 @@ class File extends Field implements UploadFieldInterface
         $value = Arr::get($input, $this->column);
         $value = array_filter(is_array($value) ? $value : explode(',', $value));
 
-        $fileLimit = $this->options['fileNumLimit'] ?? 1;
-        if ($fileLimit < count($value)) {
-            $this->form->responseValidationMessages(
-                $this->column,
-                trans('admin.uploader.max_file_limit', ['attribute' => $this->label, 'max' => $fileLimit])
-            );
-
-            return false;
-        }
-
         $rules = $attributes = [];
         $requiredIf = null;
+
+        $fileLimit = $this->options['fileNumLimit'] ?? 1;
+        if (!empty($value) && $fileLimit > 1){
+            $rules[$this->column][] = function($atribute,$value,$fail)use($fileLimit){
+                $value = array_filter(is_array($value) ? $value : explode(',', $value));
+                if (count($value) > $fileLimit ) {
+                    $fail(trans('admin.uploader.max_file_limit', ['attribute' => $this->label, 'max' => $fileLimit]));
+                }
+            };
+            return Validator::make($input, $rules, $this->getValidationMessages(), $attributes);
+        }
 
         if (! $this->hasRule('required') && ! $requiredIf = $this->getRule('required_if*')) {
             return false;
@@ -103,7 +107,7 @@ class File extends Field implements UploadFieldInterface
      */
     public function setRelation(array $options = [])
     {
-        $this->options['formData']['_relation'] = [$options['relation'], $options['key']];
+        $this->options['formData']['_relation'] = [$options['relation'], $options['key'] ?? null];
 
         return $this;
     }
@@ -186,10 +190,9 @@ class File extends Field implements UploadFieldInterface
      *
      * @see http://fex.baidu.com/webuploader/doc/index.html#WebUploader_Uploader_events
      *
-     * @param string $event
-     * @param string $script
-     * @param bool   $once
-     *
+     * @param  string  $event
+     * @param  string  $script
+     * @param  bool  $once
      * @return $this
      */
     public function on(string $event, string $script, bool $once = false)
@@ -206,13 +209,33 @@ class File extends Field implements UploadFieldInterface
      *
      * @see http://fex.baidu.com/webuploader/doc/index.html#WebUploader_Uploader_events
      *
-     * @param string $event
-     * @param string $script
-     *
+     * @param  string  $event
+     * @param  string  $script
      * @return $this
      */
     public function once(string $event, string $script)
     {
         return $this->on($event, $script, true);
+    }
+
+    /**
+     * @param  Field  $field
+     * @param  string|array  $fieldRules
+     * @return void
+     */
+    public static function deleteRules(Field $field, &$fieldRules)
+    {
+        if ($field instanceof self) {
+            $fieldRules = is_string($fieldRules) ? explode('|', $fieldRules) : $fieldRules;
+
+            Helper::deleteContains($fieldRules, ['image', 'file', 'dimensions', 'size', 'max', 'min']);
+        }
+    }
+
+    public function override(bool $override = true)
+    {
+        $this->options['override'] = $override;
+
+        return $this;
     }
 }

@@ -39,9 +39,12 @@ class Map extends Field
             case 'yandex':
                 $js = '//api-maps.yandex.ru/2.1/?lang=ru_RU';
                 break;
+            case 'amap':
+                $js = '//webapi.amap.com/maps?v=1.4.15&plugin=AMap.Autocomplete,AMap.PlaceSearch,AMap.Geolocation&key='.($keys['amap'] ?? env('AMAP_API_KEY'));
+                break;
             case 'baidu':
             default:
-                $js = '//api.map.baidu.com/getscript?v=2.0&ak='.($keys['baidu'] ?? env('BAIDU_MAP_API_KEY'));
+                $js = '//api.map.baidu.com/api?v=2.0&ak='.($keys['baidu'] ?? env('BAIDU_MAP_API_KEY'));
         }
 
         Admin::js($js);
@@ -69,6 +72,9 @@ class Map extends Field
                 break;
             case 'yandex':
                 $this->yandex();
+                break;
+            case 'amap':
+                $this->amap();
                 break;
             case 'baidu':
             default:
@@ -108,6 +114,11 @@ class Map extends Field
         return $this->addVariables(['type' => 'baidu', 'searchId' => 'bdmap'.Str::random()]);
     }
 
+    public function amap()
+    {
+        return $this->addVariables(['type' => 'amap', 'searchId' => 'amap'.Str::random()]);
+    }
+
     protected function getDefaultElementClass()
     {
         $class = $this->normalizeElementClass($this->column['lat']).$this->normalizeElementClass($this->column['lng']);
@@ -120,5 +131,24 @@ class Map extends Field
         $this->addVariables(['height' => $this->height]);
 
         return parent::render();
+    }
+
+    /**
+     * Set element class.
+     *
+     * @param  string|array  $class
+     * @param  bool  $normalize
+     * @return $this
+     */
+    public function setElementClass($class, bool $normalize = true)
+    {
+        if ($normalize) {
+            $class = $this->normalizeElementClass($class);
+        }
+
+        $strClass = array_merge($class['lat'], $class['lng']);
+        $this->elementClass = $strClass;
+
+        return $this;
     }
 }

@@ -33,7 +33,9 @@ class PermissionController extends AdminController
             $tree->disableEditButton();
 
             $tree->branch(function ($branch) {
-                $payload = "<div class='pull-left' style='min-width:310px'><b>{$branch['name']}</b>&nbsp;&nbsp;[<span class='text-primary'>{$branch['slug']}</span>]";
+                $branchName = htmlspecialchars($branch['name']);
+                $branchSlug = htmlspecialchars($branch['slug']);
+                $payload = "<div class='pull-left' style='min-width:310px'><b>{$branchName}</b>&nbsp;&nbsp;[<span class='text-primary'>{$branchSlug}</span>]";
 
                 $path = array_filter($branch['http_path']);
 
@@ -79,7 +81,13 @@ class PermissionController extends AdminController
 
     public function form()
     {
-        return Form::make(new Permission(), function (Form $form) {
+        $with = [];
+
+        if ($bindMenu = config('admin.menu.permission_bind_menu', true)) {
+            $with[] = 'menus';
+        }
+
+        return Form::make(Permission::with($with), function (Form $form) use ($bindMenu) {
             $permissionTable = config('admin.database.permissions_table');
             $connection = config('admin.database.connection');
             $permissionModel = config('admin.database.permissions_model');
@@ -107,34 +115,65 @@ class PermissionController extends AdminController
             $form->tags('http_path', trans('admin.http.path'))
                 ->options($this->getRoutes());
 
+            if ($bindMenu) {
+                $form->tree('menus', trans('admin.menu'))
+                    ->treeState(false)
+                    ->setTitleColumn('title')
+                    ->nodes(function () {
+                        $model = config('admin.database.menu_model');
+
+                        return (new $model())->allNodes();
+                    })
+                    ->customFormat(function ($v) {
+                        if (! $v) {
+                            return [];
+                        }
+
+                        return array_column($v, 'id');
+                    });
+            }
+
             $form->display('created_at', trans('admin.created_at'));
             $form->display('updated_at', trans('admin.updated_at'));
 
             $form->disableViewButton();
             $form->disableViewCheck();
+        })->saved(function () {
+            $model = config('admin.database.menu_model');
+            (new $model())->flushCache();
         });
     }
 
     public function getRoutes()
     {
-        $prefix = config('admin.route.prefix');
+        $prefix = (string) config('admin.route.prefix');
 
         $container = collect();
 
         $routes = collect(app('router')->getRoutes())->map(function ($route) use ($prefix, $container) {
-            if (! Str::startsWith($uri = $route->uri(), $prefix) && $prefix) {
+            if (! Str::startsWith($uri = $route->uri(), $prefix) && $prefix && $prefix !== '/') {
                 return;
             }
 
             if (! Str::contains($uri, '{')) {
-                $route = Str::replaceFirst($prefix, '', $uri.'*');
+                if ($prefix !== '/') {
+                    $route = Str::replaceFirst($prefix, '', $uri.'*');
+                } else {
+                    $route = $uri.'*';
+                }
 
                 if ($route !== '*') {
                     $container->push($route);
                 }
             }
 
-            return Str::replaceFirst($prefix, '', preg_replace('/{.*}+/', '*', $uri));
+            $path = preg_replace('/{.*}+/', '*', $uri);
+
+            if ($prefix !== '/') {
+                return Str::replaceFirst($prefix, '', $path);
+            }
+
+            return $path;
         });
 
         return $container->merge($routes)->filter()->all();

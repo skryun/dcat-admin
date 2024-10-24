@@ -5,7 +5,6 @@ namespace Dcat\Admin\Extend;
 use Dcat\Admin\Admin;
 use Dcat\Admin\Exception\AdminException;
 use Dcat\Admin\Exception\RuntimeException;
-use Dcat\Admin\Models\Extension;
 use Dcat\Admin\Models\Extension as ExtensionModel;
 use Dcat\Admin\Support\Composer;
 use Dcat\Admin\Support\Helper;
@@ -78,8 +77,7 @@ class Manager
     /**
      * 判断扩展是否启用.
      *
-     * @param string|null $name
-     *
+     * @param  string|null  $name
      * @return bool
      */
     public function enabled(?string $name)
@@ -90,16 +88,15 @@ class Manager
     /**
      * 启用或禁用扩展.
      *
-     * @param string|null $name
-     * @param bool        $enable
-     *
+     * @param  string|null  $name
+     * @param  bool  $enable
      * @return void
      */
     public function enable(?string $name, bool $enable = true)
     {
         $name = $this->getName($name);
 
-        $extension = Extension::where('name', $name)->first();
+        $extension = ExtensionModel::where('name', $name)->first();
 
         if (! $extension) {
             throw new RuntimeException(sprintf('Please install the extension(%s) first!', $name));
@@ -131,9 +128,8 @@ class Manager
     /**
      * 获取扩展路径.
      *
-     * @param string|ServiceProvider $name
-     * @param string|null            $path
-     *
+     * @param  string|ServiceProvider  $name
+     * @param  string|null  $path
      * @return string|void
      *
      * @throws \ReflectionException
@@ -150,8 +146,7 @@ class Manager
     /**
      * 获取扩展对象.
      *
-     * @param string|ServiceProvider $name
-     *
+     * @param  string|ServiceProvider  $name
      * @return ServiceProvider|null
      */
     public function get($name)
@@ -166,8 +161,7 @@ class Manager
     /**
      * 判断插件是否存在.
      *
-     * @param string $name
-     *
+     * @param  string  $name
      * @return bool
      */
     public function has($name)
@@ -176,8 +170,7 @@ class Manager
     }
 
     /**
-     * @param string $name
-     *
+     * @param  string  $name
      * @return mixed
      */
     protected function formatName($name)
@@ -212,9 +205,8 @@ class Manager
     /**
      * 加载扩展.
      *
-     * @param string $directory
-     * @param bool   $addPsr4
-     *
+     * @param  string  $directory
+     * @param  bool  $addPsr4
      * @return ServiceProvider|null
      */
     public function loadExtension(string $directory, bool $addPsr4 = true)
@@ -235,9 +227,8 @@ class Manager
     /**
      * 获取扩展类实例.
      *
-     * @param string $directory
-     * @param bool   $addPsr4
-     *
+     * @param  string  $directory
+     * @param  bool  $addPsr4
      * @return ServiceProvider
      */
     public function resolveExtension(string $directory, bool $addPsr4 = true)
@@ -263,8 +254,7 @@ class Manager
     /**
      * 获取扩展目录.
      *
-     * @param string $dirPath
-     *
+     * @param  string  $dirPath
      * @return array
      */
     public function getExtensionDirectories($dirPath = null)
@@ -297,7 +287,7 @@ class Manager
     /**
      * 添加扩展.
      *
-     * @param \Dcat\Admin\Extend\ServiceProvider $serviceProvider
+     * @param  \Dcat\Admin\Extend\ServiceProvider  $serviceProvider
      */
     public function addExtension(ServiceProvider $serviceProvider)
     {
@@ -321,7 +311,6 @@ class Manager
      * 获取扩展名称.
      *
      * @param $extension
-     *
      * @return string
      */
     public function getName($extension)
@@ -336,9 +325,8 @@ class Manager
     /**
      * 解压缩扩展包.
      *
-     * @param string $filePath
-     * @param bool   $force
-     *
+     * @param  string  $filePath
+     * @param  bool  $force
      * @return string
      */
     public function extract($filePath, bool $force = false)
@@ -353,9 +341,8 @@ class Manager
     }
 
     /**
-     * @param string $filePath
-     * @param bool   $force
-     *
+     * @param  string  $filePath
+     * @param  bool  $force
      * @return bool
      */
     public function extractZip($filePath, bool $force = false)
@@ -412,7 +399,6 @@ class Manager
      * 校验扩展包内容是否正确.
      *
      * @param $directory
-     *
      * @return bool
      */
     protected function checkFiles($directory)
@@ -437,8 +423,8 @@ class Manager
     /**
      * 生成临时文件.
      *
-     * @param string $fileCode A unique file code
-     * @return string           Full path on the disk
+     * @param  string  $fileCode  A unique file code
+     * @return string Full path on the disk
      */
     protected function getFilePath($fileCode)
     {
@@ -486,8 +472,7 @@ class Manager
     /**
      * 创建临时目录.
      *
-     * @param string $dir
-     *
+     * @param  string  $dir
      * @return string
      */
     protected function makeTempDirectory($dir = null)
@@ -506,8 +491,8 @@ class Manager
     /**
      * 注册 PSR4 验证规则.
      *
-     * @param string $directory
-     * @param array  $psr4
+     * @param  string  $directory
+     * @param  array  $psr4
      */
     protected function registerPsr4($directory, array $psr4)
     {
@@ -523,7 +508,7 @@ class Manager
     /**
      * 上报异常.
      *
-     * @param \Throwable $e
+     * @param  \Throwable  $e
      */
     protected function reportException(\Throwable $e)
     {
@@ -531,8 +516,7 @@ class Manager
     }
 
     /**
-     * @param string $dir
-     *
+     * @param  string  $dir
      * @return array
      */
     protected function scandir($dir)

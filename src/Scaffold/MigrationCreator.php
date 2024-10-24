@@ -18,7 +18,6 @@ class MigrationCreator extends BaseMigrationCreator
      * Create a new migration creator instance.
      *
      * @param  \Illuminate\Filesystem\Filesystem  $files
-     *
      * @return void
      */
     public function __construct(Filesystem $files)
@@ -29,11 +28,10 @@ class MigrationCreator extends BaseMigrationCreator
     /**
      * Create a new model.
      *
-     * @param string    $name
-     * @param string    $path
-     * @param null      $table
-     * @param bool|true $create
-     *
+     * @param  string  $name
+     * @param  string  $path
+     * @param  null  $table
+     * @param  bool|true  $create
      * @return string
      */
     public function create($name, $path, $table = null, $create = true)
@@ -44,10 +42,10 @@ class MigrationCreator extends BaseMigrationCreator
 
         $stub = $this->files->get(__DIR__.'/stubs/create.stub');
 
-        $this->files->put($path, $this->populateStub($name, $stub, $table));
+        $this->files->put($path, $this->populateAdminStub($name, $stub, $table));
         $this->files->chmod($path, 0777);
 
-        $this->firePostCreateHooks($table);
+        $this->firePostCreateHooks($table, $path);
 
         return $path;
     }
@@ -55,13 +53,12 @@ class MigrationCreator extends BaseMigrationCreator
     /**
      * Populate stub.
      *
-     * @param string $name
-     * @param string $stub
-     * @param string $table
-     *
+     * @param  string  $name
+     * @param  string  $stub
+     * @param  string  $table
      * @return mixed
      */
-    protected function populateStub($name, $stub, $table)
+    protected function populateAdminStub($name, $stub, $table)
     {
         return str_replace(
             ['DummyClass', 'DummyTable', 'DummyStructure'],
@@ -73,14 +70,13 @@ class MigrationCreator extends BaseMigrationCreator
     /**
      * Build the table blueprint.
      *
-     * @param array      $fields
-     * @param string     $keyName
-     * @param bool|true  $useTimestamps
-     * @param bool|false $softDeletes
+     * @param  array  $fields
+     * @param  string  $keyName
+     * @param  bool|true  $useTimestamps
+     * @param  bool|false  $softDeletes
+     * @return $this
      *
      * @throws \Exception
-     *
-     * @return $this
      */
     public function buildBluePrint($fields = [], $keyName = 'id', $useTimestamps = true, $softDeletes = false)
     {
@@ -92,7 +88,7 @@ class MigrationCreator extends BaseMigrationCreator
             throw new AdminException('Table fields can\'t be empty');
         }
 
-        $rows[] = "\$table->increments('$keyName');\n";
+        $rows[] = "\$table->bigIncrements('$keyName');\n";
 
         foreach ($fields as $field) {
             $column = "\$table->{$field['type']}('{$field['name']}')";

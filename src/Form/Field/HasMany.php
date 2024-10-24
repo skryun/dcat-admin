@@ -15,12 +15,24 @@ use Illuminate\Support\Str;
  */
 class HasMany extends Field
 {
+    use Form\ResolveField;
+
     /**
      * Relation name.
      *
      * @var string
      */
-    protected $relationName = '';
+    protected $relationName;
+
+    /**
+     * @var string
+     */
+    protected $parentRelationName;
+
+    /**
+     * @var string|int
+     */
+    protected $parentKey;
 
     /**
      * Relation key name.
@@ -79,7 +91,7 @@ class HasMany extends Field
      * Create a new HasMany field instance.
      *
      * @param $relationName
-     * @param array $arguments
+     * @param  array  $arguments
      */
     public function __construct($relationName, $arguments = [])
     {
@@ -107,8 +119,7 @@ class HasMany extends Field
     /**
      * Get validator for this field.
      *
-     * @param array $input
-     *
+     * @param  array  $input
      * @return bool|Validator
      */
     public function getValidator(array $input)
@@ -127,11 +138,7 @@ class HasMany extends Field
                 continue;
             }
 
-            if ($field instanceof File) {
-                $fieldRules = is_string($fieldRules) ? explode('|', $fieldRules) : $fieldRules;
-
-                Helper::deleteByValue($fieldRules, ['image', 'file']);
-            }
+            File::deleteRules($field, $fieldRules);
 
             $column = $field->column();
 
@@ -222,9 +229,8 @@ class HasMany extends Field
     /**
      * Format validation messages.
      *
-     * @param array $input
-     * @param array $messages
-     *
+     * @param  array  $input
+     * @param  array  $messages
      * @return array
      */
     protected function formatValidationMessages(array $input, array $messages)
@@ -244,10 +250,9 @@ class HasMany extends Field
     /**
      * Format validation attributes.
      *
-     * @param array  $input
-     * @param string $label
-     * @param string $column
-     *
+     * @param  array  $input
+     * @param  string  $label
+     * @param  string  $column
      * @return array
      */
     protected function formatValidationAttribute($input, $label, $column)
@@ -280,9 +285,8 @@ class HasMany extends Field
     /**
      * Reset input key for validation.
      *
-     * @param array $input
-     * @param array $column $column is the column name array set
-     *
+     * @param  array  $input
+     * @param  array  $column  $column is the column name array set
      * @return void.
      */
     protected function resetInputKey(array &$input, array $column)
@@ -344,8 +348,7 @@ class HasMany extends Field
     /**
      * Prepare input data for insert or update.
      *
-     * @param array $input
-     *
+     * @param  array  $input
      * @return array
      */
     protected function prepareInputValue($input)
@@ -357,24 +360,64 @@ class HasMany extends Field
         );
     }
 
+    public function setParentRelationName($name, $parentKey)
+    {
+        $this->parentRelationName = $name;
+        $this->parentKey = $parentKey;
+
+        return $this;
+    }
+
+    public function getNestedFormColumnName()
+    {
+        if ($this->parentRelationName) {
+            $key = $this->parentKey ?? (NestedForm::DEFAULT_KEY_PREFIX.NestedForm::DEFAULT_PARENT_KEY_NAME);
+
+            return $this->parentRelationName.'.'.$key.'.'.$this->column;
+        }
+
+        return $this->column;
+    }
+
+    protected function getNestedFormDefaultKeyName()
+    {
+        if ($this->parentRelationName) {
+            // hasmany嵌套table时，需要重新设置行的默认key
+            return $this->parentRelationName.'_NKEY_';
+        }
+    }
+
+    protected function setNestedFormDefaultKey(Form\NestedForm $form)
+    {
+        if ($this->parentRelationName) {
+            // hasmany嵌套table时需要特殊处理
+            $form->setDefaultKey(Form\NestedForm::DEFAULT_KEY_PREFIX.$this->getNestedFormDefaultKeyName());
+        }
+    }
+
     /**
      * Build a Nested form.
      *
-     * @param null     $key
-     *
+     * @param  null  $key
      * @return NestedForm
      */
     public function buildNestedForm($key = null)
     {
-        $form = new Form\NestedForm($this->column, $key);
+        $form = new Form\NestedForm($this->getNestedFormColumnName(), $key);
+
+        $this->setNestedFormDefaultKey($form);
 
         $form->setForm($this->form);
 
+        $form->setResolvingFieldCallbacks($this->resolvingFieldCallbacks);
+
         call_user_func($this->builder, $form);
 
-        $form->hidden($this->getKeyName());
+        $hidden[] = $form->hidden($this->getKeyName());
+        $hidden[] = $form->hidden(NestedForm::REMOVE_FLAG_NAME)->default(0)->addElementClass(NestedForm::REMOVE_FLAG_CLASS);
 
-        $form->hidden(NestedForm::REMOVE_FLAG_NAME)->default(0)->addElementClass(NestedForm::REMOVE_FLAG_CLASS);
+        // 使用column布局之后需要重新追加字段
+        $form->layout()->appendToLastColumn($hidden);
 
         return $form;
     }
@@ -394,7 +437,7 @@ class HasMany extends Field
     }
 
     /**
-     * @param string $relationKeyName
+     * @param  string  $relationKeyName
      */
     public function setRelationKeyName(?string $relationKeyName)
     {
@@ -406,8 +449,7 @@ class HasMany extends Field
     /**
      * Set view mode.
      *
-     * @param string $mode currently support `tab` mode.
-     *
+     * @param  string  $mode  currently support `tab` mode.
      * @return $this
      *
      * @author Edwin Hui
@@ -442,9 +484,9 @@ class HasMany extends Field
     /**
      * Build Nested form for related data.
      *
-     * @throws \Exception
-     *
      * @return array
+     *
+     * @throws \Exception
      */
     protected function buildRelatedForms()
     {
@@ -507,9 +549,9 @@ class HasMany extends Field
     /**
      * Render the `HasMany` field.
      *
-     * @throws \Exception
-     *
      * @return \Illuminate\View\View|string
+     *
+     * @throws \Exception
      */
     public function render()
     {
@@ -522,7 +564,7 @@ class HasMany extends Field
         }
 
         // specify a view to render.
-        $this->view = $this->views[$this->viewMode];
+        $this->view = $this->view ?: $this->views[$this->viewMode];
 
         $this->addVariables([
             'forms'          => $this->buildRelatedForms(),
@@ -539,9 +581,9 @@ class HasMany extends Field
     /**
      * Render the `HasMany` field for table style.
      *
-     * @throws \Exception
-     *
      * @return mixed
+     *
+     * @throws \Exception
      */
     protected function renderTable()
     {
@@ -573,7 +615,7 @@ class HasMany extends Field
         $template .= '<td class="hidden">'.implode('', $hidden).'</td>';
 
         // specify a view to render.
-        $this->view = $this->views[$this->viewMode];
+        $this->view = $this->view ?: $this->views[$this->viewMode];
 
         $this->addVariables([
             'headers'      => $headers,
@@ -583,6 +625,7 @@ class HasMany extends Field
             'options'      => $this->options,
             'count'        => count($this->value()),
             'columnClass'  => $this->columnClass,
+            'parentKey'    => $this->getNestedFormDefaultKeyName(),
         ]);
 
         return parent::render();

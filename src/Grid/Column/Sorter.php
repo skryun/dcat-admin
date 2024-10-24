@@ -34,9 +34,9 @@ class Sorter implements Renderable
     /**
      * Sorter constructor.
      *
-     * @param Grid $grid
-     * @param string $columnName
-     * @param string $cast
+     * @param  Grid  $grid
+     * @param  string  $columnName
+     * @param  string  $cast
      */
     public function __construct(Grid $grid, $columnName, $cast)
     {
@@ -72,7 +72,7 @@ class Sorter implements Renderable
     public function render()
     {
         $type = 'desc';
-        $icon = 'up';
+        $icon = 'down';
         $active = '';
 
         if ($this->isSorted()) {
@@ -80,7 +80,7 @@ class Sorter implements Renderable
             $active = 'active';
 
             if ($this->sort['type'] === 'asc') {
-                $icon = 'down';
+                $icon = 'up';
             }
         }
 

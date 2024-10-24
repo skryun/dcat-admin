@@ -36,6 +36,20 @@ class DialogTable extends Widget
     protected $footer;
 
     /**
+     * show max or min.
+     *
+     * @var bool
+     */
+    protected $maxmin = true;
+
+    /**
+     * resize setting.
+     *
+     * @var bool
+     */
+    protected $resize = true;
+
+    /**
      * @var array
      */
     protected $events = ['shown' => null, 'hidden' => null, 'load' => null];
@@ -58,8 +72,7 @@ class DialogTable extends Widget
     /**
      * 设置异步表格实例.
      *
-     * @param LazyRenderable|null $renderable
-     *
+     * @param  LazyRenderable|null  $renderable
      * @return $this
      */
     public function from(?LazyRenderable $renderable)
@@ -76,8 +89,7 @@ class DialogTable extends Widget
     /**
      * 设置弹窗标题.
      *
-     * @param string $title
-     *
+     * @param  string  $title
      * @return $this
      */
     public function title($title)
@@ -94,8 +106,7 @@ class DialogTable extends Widget
      *    $this->width('500px');
      *    $this->width('50%');
      *
-     * @param string $width
-     *
+     * @param  string  $width
      * @return $this
      */
     public function width($width)
@@ -106,10 +117,35 @@ class DialogTable extends Widget
     }
 
     /**
+     * show max or min.
+     *
+     * @param  bool  $maxmin
+     * @return $this
+     */
+    public function maxmin(bool $maxmin)
+    {
+        $this->maxmin = $maxmin;
+
+        return $this;
+    }
+
+    /**
+     * resize setting.
+     *
+     * @param  bool  $resize
+     * @return $this
+     */
+    public function resize(bool $resize)
+    {
+        $this->resize = $resize;
+
+        return $this;
+    }
+
+    /**
      * 设置点击按钮HTML.
      *
-     * @param string|\Closure|Renderable $button
-     *
+     * @param  string|\Closure|Renderable  $button
      * @return $this
      */
     public function button($button)
@@ -122,8 +158,7 @@ class DialogTable extends Widget
     /**
      * 监听弹窗打开事件.
      *
-     * @param string $script
-     *
+     * @param  string  $script
      * @return $this
      */
     public function onShown(string $script)
@@ -136,8 +171,7 @@ class DialogTable extends Widget
     /**
      * 监听弹窗隐藏事件.
      *
-     * @param string $script
-     *
+     * @param  string  $script
      * @return $this
      */
     public function onHidden(string $script)
@@ -150,8 +184,7 @@ class DialogTable extends Widget
     /**
      * 监听表格加载完毕事件.
      *
-     * @param string $script
-     *
+     * @param  string  $script
      * @return $this
      */
     public function onLoad(string $script)
@@ -164,8 +197,7 @@ class DialogTable extends Widget
     /**
      * 设置弹窗底部内容.
      *
-     * @param string|\Closure|Renderable $footer
-     *
+     * @param  string|\Closure|Renderable  $footer
      * @return $this
      */
     public function footer($footer)
@@ -192,6 +224,8 @@ class DialogTable extends Widget
             'table'  => $this->renderTable(),
             'footer' => $this->renderFooter(),
             'events' => $this->events,
+            'maxmin' => $this->maxmin,
+            'resize' => $this->resize,
         ]);
 
         return parent::render();

@@ -10,7 +10,9 @@ use Illuminate\Support\Collection;
 
 class NestedForm extends WidgetForm
 {
-    const DEFAULT_KEY_NAME = '__LA_KEY__';
+    const DEFAULT_KEY_PREFIX = 'new_';
+    const DEFAULT_PARENT_KEY_NAME = '__PARENT_NESTED__';
+    const DEFAULT_KEY_NAME = '__NESTED__';
 
     const REMOVE_FLAG_NAME = '_remove_';
 
@@ -24,9 +26,14 @@ class NestedForm extends WidgetForm
     /**
      * NestedForm key.
      *
-     * @var
+     * @var string
      */
     protected $key;
+
+    /**
+     * @var string
+     */
+    protected $defaultKey;
 
     /**
      * Fields in form.
@@ -52,8 +59,8 @@ class NestedForm extends WidgetForm
      *
      * NestedForm constructor.
      *
-     * @param string $relation
-     * @param null   $key
+     * @param  string  $relation
+     * @param  null  $key
      */
     public function __construct($relation = null, $key = null)
     {
@@ -72,8 +79,7 @@ class NestedForm extends WidgetForm
     /**
      * Set Form.
      *
-     * @param Form|WidgetForm $form
-     *
+     * @param  Form|WidgetForm  $form
      * @return $this
      */
     public function setForm($form = null)
@@ -101,9 +107,8 @@ class NestedForm extends WidgetForm
     /**
      * Set original values for fields.
      *
-     * @param array  $data
-     * @param string $relatedKeyName
-     *
+     * @param  array  $data
+     * @param  string  $relatedKeyName
      * @return $this
      */
     public function setOriginal($data, $relatedKeyName)
@@ -129,8 +134,7 @@ class NestedForm extends WidgetForm
     /**
      * Prepare for insert or update.
      *
-     * @param array $input
-     *
+     * @param  array  $input
      * @return mixed
      */
     public function prepare($input)
@@ -169,8 +173,7 @@ class NestedForm extends WidgetForm
     /**
      * Set key for current form.
      *
-     * @param mixed $key
-     *
+     * @param  mixed  $key
      * @return $this
      */
     public function setKey($key)
@@ -183,14 +186,13 @@ class NestedForm extends WidgetForm
     /**
      * Set original data for each field.
      *
-     * @param string $key
-     *
+     * @param  string  $key
      * @return void
      */
     protected function setFieldOriginalValue($key)
     {
         $values = [];
-        if (array_key_exists($key, $this->original)) {
+        if (Helper::keyExists($key, $this->original)) {
             $values = $this->original[$key];
         }
         $this->fields->each(function (Field $field) use ($values) {
@@ -201,8 +203,7 @@ class NestedForm extends WidgetForm
     /**
      * Do prepare work before store and update.
      *
-     * @param array $record
-     *
+     * @param  array  $record
      * @return array
      */
     protected function prepareRecord($record)
@@ -246,9 +247,8 @@ class NestedForm extends WidgetForm
     /**
      * Fetch value in input data by column name.
      *
-     * @param array        $data
-     * @param string|array $columns
-     *
+     * @param  array  $data
+     * @param  string|array  $columns
      * @return array|mixed
      */
     protected function fetchColumnValue($data, $columns)
@@ -296,6 +296,13 @@ class NestedForm extends WidgetForm
             $this->form->builder()->pushField((clone $field)->display(false));
         }
 
+        if ($field instanceof Form\Field\HasMany) {
+            // HasMany以及array嵌套table，需要保存上级字段名
+            $field->setParentRelationName($this->relationName, $this->key);
+        }
+
+        $this->callResolvingFieldCallbacks($field);
+
         $field->setRelation([
             'relation' => $this->relationName,
             'key'      => $this->key,
@@ -333,8 +340,7 @@ class NestedForm extends WidgetForm
     /**
      * Fill data to all fields in form.
      *
-     * @param array $data
-     *
+     * @param  array  $data
      * @return $this
      */
     public function fill($data)
@@ -347,11 +353,22 @@ class NestedForm extends WidgetForm
         return $this;
     }
 
+    public function getDefaultKey()
+    {
+        return $this->defaultKey ?: (static::DEFAULT_KEY_PREFIX.static::DEFAULT_KEY_NAME);
+    }
+
+    public function setDefaultKey($key)
+    {
+        $this->defaultKey = $key;
+
+        return $this;
+    }
+
     /**
      * Set `errorKey` `elementName` `elementClass` for fields inside hasmany fields.
      *
-     * @param Field $field
-     *
+     * @param  Field  $field
      * @return Field
      */
     protected function formatField(Field $field)
@@ -360,17 +377,17 @@ class NestedForm extends WidgetForm
 
         $elementName = $elementClass = $errorKey = [];
 
-        $key = $this->key ?: 'new_'.static::DEFAULT_KEY_NAME;
+        $key = $this->key ?? $this->getDefaultKey();
 
         if (is_array($column)) {
             foreach ($column as $k => $name) {
                 $errorKey[$k] = sprintf('%s.%s.%s', $this->relationName, $key, $name);
-                $elementName[$k] = sprintf('%s[%s][%s]', $this->formatName(), $key, $name);
+                $elementName[$k] = Helper::formatElementName($this->formatName().'.'.$key.'.'.$name);
                 $elementClass[$k] = [$this->formatClass(), $this->formatClass($name), $this->formatClass($name, false)];
             }
         } else {
             $errorKey = sprintf('%s.%s.%s', $this->relationName, $key, $column);
-            $elementName = sprintf('%s[%s][%s]', $this->formatName(), $key, $column);
+            $elementName = Helper::formatElementName($this->formatName().'.'.$key.'.'.$column);
             $elementClass = [$this->formatClass(), $this->formatClass($column), $this->formatClass($column, false)];
         }
 
@@ -394,9 +411,8 @@ class NestedForm extends WidgetForm
     /**
      * Add nested-form fields dynamically.
      *
-     * @param string $method
-     * @param array  $arguments
-     *
+     * @param  string  $method
+     * @param  array  $arguments
      * @return mixed
      */
     public function __call($method, $arguments)

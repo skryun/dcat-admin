@@ -17,9 +17,8 @@ class LangCreator
     /**
      * 生成语言包.
      *
-     * @param string $controller
-     * @param string $title
-     *
+     * @param  string  $controller
+     * @param  string  $title
      * @return string
      */
     public function create(string $controller, ?string $title)
@@ -60,13 +59,12 @@ class LangCreator
     /**
      * 获取语言包路径.
      *
-     * @param string $controller
-     *
+     * @param  string  $controller
      * @return string
      */
     protected function getLangPath(string $controller)
     {
-        $path = resource_path('lang/'.App::getLocale());
+        $path = rtrim(app()->langPath(), '/').'/'.App::getLocale();
 
         return $path.'/'.Helper::slug($controller).'.php';
     }

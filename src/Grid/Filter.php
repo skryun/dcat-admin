@@ -13,6 +13,7 @@ use Dcat\Admin\Grid\Filter\Date;
 use Dcat\Admin\Grid\Filter\Day;
 use Dcat\Admin\Grid\Filter\EndWith;
 use Dcat\Admin\Grid\Filter\Equal;
+use Dcat\Admin\Grid\Filter\FindInSet;
 use Dcat\Admin\Grid\Filter\Group;
 use Dcat\Admin\Grid\Filter\Gt;
 use Dcat\Admin\Grid\Filter\Hidden;
@@ -34,6 +35,7 @@ use Dcat\Admin\Grid\Filter\WhereBetween;
 use Dcat\Admin\Grid\Filter\Year;
 use Dcat\Admin\Support\Helper;
 use Dcat\Admin\Traits\HasBuilderEvents;
+use Dcat\Admin\Traits\HasVariables;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -43,33 +45,35 @@ use Illuminate\Support\Traits\Macroable;
 /**
  * Class Filter.
  *
- * @method Equal        equal($column, $label = '')
- * @method NotEqual     notEqual($column, $label = '')
- * @method Like         like($column, $label = '')
- * @method Ilike        ilike($column, $label = '')
- * @method StartWith    startWith($column, $label = '')
- * @method EndWith      endWith($column, $label = '')
- * @method Gt           gt($column, $label = '')
- * @method Lt           lt($column, $label = '')
- * @method Ngt          ngt($column, $label = '')
- * @method Nlt          nlt($column, $label = '')
- * @method Between      between($column, $label = '')
- * @method In           in($column, $label = '')
- * @method NotIn        notIn($column, $label = '')
- * @method Where        where($colum, $callback, $label = '')
+ * @method Equal equal($column, $label = '')
+ * @method NotEqual notEqual($column, $label = '')
+ * @method Like like($column, $label = '')
+ * @method Ilike ilike($column, $label = '')
+ * @method StartWith startWith($column, $label = '')
+ * @method EndWith endWith($column, $label = '')
+ * @method Gt gt($column, $label = '')
+ * @method Lt lt($column, $label = '')
+ * @method Ngt ngt($column, $label = '')
+ * @method Nlt nlt($column, $label = '')
+ * @method Between between($column, $label = '')
+ * @method In in($column, $label = '')
+ * @method NotIn notIn($column, $label = '')
+ * @method Where where($colum, $callback, $label = '')
  * @method WhereBetween whereBetween($colum, $callback, $label = '')
- * @method Date         date($column, $label = '')
- * @method Day          day($column, $label = '')
- * @method Month        month($column, $label = '')
- * @method Year         year($column, $label = '')
- * @method Hidden       hidden($name, $value)
- * @method Group        group($column, $builder = null, $label = '')
- * @method Newline      newline()
+ * @method Date date($column, $label = '')
+ * @method Day day($column, $label = '')
+ * @method Month month($column, $label = '')
+ * @method Year year($column, $label = '')
+ * @method Hidden hidden($name, $value)
+ * @method Group group($column, $builder = null, $label = '')
+ * @method Newline newline()
+ * @method FindInSet findInSet($column, $label = '')
  */
 class Filter implements Renderable
 {
     use HasBuilderEvents;
     use Macroable;
+    use HasVariables;
 
     const MODE_RIGHT_SIDE = 'right-side';
     const MODE_PANEL = 'panel';
@@ -105,6 +109,7 @@ class Filter implements Renderable
         'year'         => Year::class,
         'hidden'       => Hidden::class,
         'newline'      => Newline::class,
+        'findInSet'    => FindInSet::class,
     ];
 
     /**
@@ -142,7 +147,7 @@ class Filter implements Renderable
     /**
      * @var bool
      */
-    public $expand = false;
+    public $expand;
 
     /**
      * @var Collection
@@ -201,7 +206,7 @@ class Filter implements Renderable
     /**
      * Create a new filter instance.
      *
-     * @param Model $model
+     * @param  Model  $model
      */
     public function __construct(Model $model)
     {
@@ -237,8 +242,7 @@ class Filter implements Renderable
     /**
      * Set action of search form.
      *
-     * @param string $action
-     *
+     * @param  string  $action
      * @return $this
      */
     public function setAction($action)
@@ -259,8 +263,7 @@ class Filter implements Renderable
     }
 
     /**
-     * @param bool $disabled
-     *
+     * @param  bool  $disabled
      * @return $this
      */
     public function disableCollapse(bool $disabled = true)
@@ -271,8 +274,7 @@ class Filter implements Renderable
     }
 
     /**
-     * @param bool $disabled
-     *
+     * @param  bool  $disabled
      * @return $this
      */
     public function disableResetButton(bool $disabled = true)
@@ -285,9 +287,8 @@ class Filter implements Renderable
     /**
      * Get input data.
      *
-     * @param string $key
-     * @param null   $value
-     *
+     * @param  string  $key
+     * @param  null  $value
      * @return array|mixed
      */
     public function input($key = null, $default = null)
@@ -324,8 +325,7 @@ class Filter implements Renderable
     /**
      * Set ID of search form.
      *
-     * @param string $filterID
-     *
+     * @param  string  $filterID
      * @return $this
      */
     public function setFilterID($filterID)
@@ -352,8 +352,7 @@ class Filter implements Renderable
     }
 
     /**
-     * @param string|null $mode
-     *
+     * @param  string|null  $mode
      * @return $this|string
      */
     public function mode(string $mode = null)
@@ -398,7 +397,7 @@ class Filter implements Renderable
     /**
      * Remove filter by column.
      *
-     * @param string|array $column
+     * @param  string|array  $column
      */
     public function removeFilter($column)
     {
@@ -462,7 +461,9 @@ class Filter implements Renderable
 
         return tap(array_filter($conditions), function ($conditions) {
             if (! empty($conditions)) {
-                $this->expand();
+                if ($this->expand === null || $this->mode !== static::MODE_RIGHT_SIDE) {
+                    $this->expand();
+                }
 
                 $this->grid()->fireOnce(new ApplyFilter([$conditions]));
 
@@ -474,8 +475,7 @@ class Filter implements Renderable
     }
 
     /**
-     * @param array $inputs
-     *
+     * @param  array  $inputs
      * @return void
      */
     protected function sanitizeInputs(&$inputs)
@@ -496,8 +496,7 @@ class Filter implements Renderable
     /**
      * Add a filter to grid.
      *
-     * @param AbstractFilter $filter
-     *
+     * @param  AbstractFilter  $filter
      * @return AbstractFilter
      */
     protected function addFilter(AbstractFilter $filter)
@@ -512,8 +511,7 @@ class Filter implements Renderable
     /**
      * Use a custom filter.
      *
-     * @param AbstractFilter $filter
-     *
+     * @param  AbstractFilter  $filter
      * @return AbstractFilter
      */
     public function use(AbstractFilter $filter)
@@ -532,9 +530,19 @@ class Filter implements Renderable
     }
 
     /**
-     * @param string $key
-     * @param string $label
+     * 统计查询条件的数量.
      *
+     * @return int
+     */
+    public function countConditions()
+    {
+        return $this->mode() === Filter::MODE_RIGHT_SIDE
+            ? count($this->getConditions()) : 0;
+    }
+
+    /**
+     * @param  string  $key
+     * @param  string  $label
      * @return Scope
      */
     public function scope($key, $label = '')
@@ -605,8 +613,7 @@ class Filter implements Renderable
     /**
      * Expand filter container.
      *
-     * @param bool $value
-     *
+     * @param  bool  $value
      * @return $this
      */
     public function expand(bool $value = true)
@@ -640,11 +647,10 @@ class Filter implements Renderable
     }
 
     /**
-     * @param string $top
-     * @param string $right
-     * @param string $bottom
-     * @param string $left
-     *
+     * @param  string  $top
+     * @param  string  $right
+     * @param  string  $bottom
+     * @param  string  $left
      * @return Filter
      */
     public function padding($top = '15px', $right = '15px', $bottom = '5px', $left = '')
@@ -653,8 +659,7 @@ class Filter implements Renderable
     }
 
     /**
-     * @param string $style
-     *
+     * @param  string  $style
      * @return $this
      */
     public function style(?string $style)
@@ -708,7 +713,12 @@ class Filter implements Renderable
             $this->view = $this->mode === static::MODE_RIGHT_SIDE ? 'admin::filter.right-side-container' : 'admin::filter.container';
         }
 
-        return view($this->view)->with([
+        return view($this->view)->with($this->variables())->render();
+    }
+
+    protected function defaultVariables()
+    {
+        return [
             'action'             => $this->action ?: $this->urlWithoutFilters(),
             'layout'             => $this->layout,
             'filterID'           => $this->disableCollapse ? '' : $this->filterID,
@@ -717,7 +727,7 @@ class Filter implements Renderable
             'border'             => $this->border,
             'containerClass'     => $this->containerClass,
             'disableResetButton' => $this->disableResetButton,
-        ])->render();
+        ];
     }
 
     /**
@@ -760,9 +770,8 @@ class Filter implements Renderable
     /**
      * Generate a filter object and add to grid.
      *
-     * @param string $method
-     * @param array  $arguments
-     *
+     * @param  string  $method
+     * @param  array  $arguments
      * @return AbstractFilter|$this
      */
     public function __call($method, $arguments)
@@ -784,8 +793,8 @@ class Filter implements Renderable
     }
 
     /**
-     * @param string $name
-     * @param string $filterClass
+     * @param  string  $name
+     * @param  string  $filterClass
      */
     public static function extend($name, $filterClass)
     {
